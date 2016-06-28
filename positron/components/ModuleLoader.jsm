@@ -14,6 +14,7 @@ const Cr = Components.results;
 const Cu = Components.utils;
 
 Cu.import('resource://gre/modules/Services.jsm');
+Cu.import("resource://gre/modules/NetUtil.jsm");
 
 const subScriptLoader = Cc['@mozilla.org/moz/jssubscript-loader;1'].
                         getService(Ci.mozIJSSubScriptLoader);
@@ -77,6 +78,7 @@ function ModuleLoader(processType, window) {
    * This object is shared across all modules loaded by this loader.
    */
   if (processType === 'browser') {
+    dump('processType=browser\n')
     this.global = {
       // I don't think this is exactly the same as the Console Web API.
       // XXX Replace this with the real Console Web API (or at least ensure
@@ -84,6 +86,7 @@ function ModuleLoader(processType, window) {
       console: Cu.import('resource://gre/modules/Console.jsm', {}).console,
     };
   } else {
+    dump('processType=other\n')
     // For renderer processes, the global object is the window object
     // of the renderer window, so modules have access to all its globals.
     this.global = window;
@@ -102,7 +105,7 @@ function ModuleLoader(processType, window) {
    * @return          {Object} an `exports` object.
    */
   this.require = function(requirer, path) {
-    // dump('require: ' + requirer.id + ' requires ' + path + '\n');
+    dump('require: ' + requirer.id + ' requires ' + path + '\n');
 
     if (path === 'native_module') {
       return this;
@@ -142,7 +145,7 @@ function ModuleLoader(processType, window) {
       throw new Error(`No such module: ${path} (required by ${requirer.id})`);
     }
 
-    // dump('require: module found at ' + uri.spec + '\n');
+    dump('require: module found at ' + uri.spec + '\n');
 
     // The module object.  This gets exposed to the module itself,
     // and it also gets cached for reuse, so multiple `require(module)` calls
@@ -169,7 +172,9 @@ function ModuleLoader(processType, window) {
     // Create a target object whose prototype is the sandbox, which we'll use
     // to load the module via the subscript loader, so the module has the global
     // scope of the sandbox and the local scope of the target.
-    let target = Object.create(sandbox);
+    // let target = Object.create(sandbox);
+    // dump(Object.keys(sandbox).join(', ') + "\n");
+    // dump('hi: ' + sandbox.Object());
 
     // In the renderer process, we can't yet load all modules in a single
     // sandbox, because attempts to reference Window properties on the target
@@ -192,27 +197,56 @@ function ModuleLoader(processType, window) {
     //
     // TODO: https://github.com/mozilla/positron/issues/93
     //
-    if (processType === 'renderer') {
-      target = new Cu.Sandbox(systemPrincipal, {
-        wantComponents: true,
-        sandboxPrototype: window,
-      });
-    }
+    // if (processType === 'renderer') {
+    //   target = new Cu.Sandbox(systemPrincipal, {
+    //     wantComponents: true,
+    //     sandboxPrototype: window,
+    //   });
+    // }
+
+    let channel = NetUtil.newChannel({
+      uri: uri,
+      loadUsingSystemPrincipal: true
+    });
+
+    let stream = channel.open2();
+
+    var data = "";
+    var cstream = Components.classes["@mozilla.org/intl/converter-input-stream;1"].
+                  createInstance(Components.interfaces.nsIConverterInputStream);
+    cstream.init(stream, "UTF-8", 0, 0); // you can use another encoding here if you wish
+
+    let str = {};
+    let read = 0;
+    do {
+      read = cstream.readString(0xffffffff, str); // read as much as we can and put it in str.value
+      data += str.value;
+    } while (read != 0);
+    cstream.close(); // this closes fstream
 
     // Inject module-specific locals into the target object.
-    target.exports = module.exports;
-    target.module = module;
-    target.require = this.require.bind(this, module);
-    target.global = this.global;
-    target.__filename = file.path;
-    target.__dirname = file.parent.path;
+    // target.exports = module.exports;
+    // target.module = module;
+    // target.require = this.require.bind(this, module);
+    // target.global = this.global;
+    // target.__filename = file.path;
+    // target.__dirname = file.parent.path;
+
+    dump("this.global " + this.global + "\n");
+    dump("window " + window + "\n");
+    dump("this.global === window " + (this.global === window) + "\n");
 
     try {
-      subScriptLoader.loadSubScript(uri.spec, target, 'UTF-8');
+      data = '(function (global, exports, require, module, __filename, __dirname) { ' +
+             data +
+             '\n});';
+      var result = Cu.evalInSandbox(data, sandbox, "latest", file.path, 1);
+      result(this.global, module.exports, this.require.bind(this, module), module, file.path, file.parent.path);
+      // subScriptLoader.loadSubScript(uri.spec, target, 'UTF-8');
       return module.exports;
     } catch(ex) {
       modules.delete(module.id);
-      // dump('require: error loading module ' + path + ' from ' + uri.spec + ': ' + ex + '\n' + ex.stack + '\n');
+      dump('require: error loading module ' + path + ' from ' + uri.spec + ': ' + ex + '\n' + ex.stack + '\n');
       throw ex;
     }
   };
