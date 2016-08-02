@@ -1,0 +1,11 @@
+debug_arg=""
+if test "$MOZ_DEBUG"; then
+    debug_arg="--debug"
+fi
+
+(
+  cd ${_topsrcdir}/positron/spidernode &&
+  which python2.7 > /dev/null &&
+  exec python2.7 ./configure --engine=spidermonkey --shared ${debug_arg} ||
+  exec python    ./configure --engine=spidermonkey --shared ${debug_arg}
+)
