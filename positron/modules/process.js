@@ -4,7 +4,13 @@
 
 'use strict';
 
+// dump("!!!!!! " + process + "\n");
+
 const { classes: Cc, interfaces: Ci, results: Cr, utils: Cu } = Components;
+
+let nodeLoader = Cc["@mozilla.org/positron/nodeloader;1"]
+                 .getService(Ci.nsINodeLoader);
+// nodeLoader.init("renderer");
 
 // The Node version of this module only re-exports the `process` global,
 // because the global is implemented natively.  But we implement the global
@@ -20,10 +26,10 @@ const exeFile = Services.dirsvc.get("XREExeF", Ci.nsIFile);
 // nor for any other modules it requires upon evaluation.
 
 const { EventEmitter } = require('events');
-const process = new EventEmitter();
+const process2 = new EventEmitter();
 
 
-module.exports = process;
+module.exports = process2;
 
 // Based on addon-sdk/source/lib/sdk/timers.js.
 const threadManager = Cc["@mozilla.org/thread-manager;1"].
@@ -31,11 +37,11 @@ const threadManager = Cc["@mozilla.org/thread-manager;1"].
 let _immediateCallback;
 let _needImmediateCallback = false;
 let _immediateCallbackScheduled = false;
-Object.defineProperty(process, '_immediateCallback', {
+Object.defineProperty(process2, '_immediateCallback', {
   get() { return _immediateCallback },
   set(value) { _immediateCallback = value },
 });
-Object.defineProperty(process, '_needImmediateCallback', {
+Object.defineProperty(process2, '_needImmediateCallback', {
   get() { return _needImmediateCallback },
   set(value) {
     _needImmediateCallback = value;
@@ -51,31 +57,31 @@ Object.defineProperty(process, '_needImmediateCallback', {
 
 // This is a stub with a placeholder that browser/init.js and renderer/init.js
 // both remove.
-process.argv = [exeFile.leafName, "placeholder that init.js removes"];
+process2.argv = [exeFile.leafName, "placeholder that init.js removes"];
 
-// In Node, process.js is basically a noop, as it just re-exports the existing
-// `process` global.  But in Positron, we implement the `process` global via
-// this module, so we construct the `process` global by importing this module
+// In Node, process2.js is basically a noop, as it just re-exports the existing
+// `process2` global.  But in Positron, we implement the `process2` global via
+// this module, so we construct the `process2` global by importing this module
 // rather than the other way around.
 
 // This comes from Electron, where it's defined by common/init.js, which we
-// currently don't load in the main process (although we do load it in renderer
-// processes, so the version in init.js overrides this one in those processes).
+// currently don't load in the main process2 (although we do load it in renderer
+// process2es, so the version in init.js overrides this one in those process2es).
 //
-// TODO: once we enable the loading of init.js in the main process, remove this.
+// TODO: once we enable the loading of init.js in the main process2, remove this.
 //
-process.atomBinding = function(name) {
+process2.atomBinding = function(name) {
   try {
-    return process.binding("atom_" + process.type + "_" + name);
+    return process2.binding("atom_" + process2.type + "_" + name);
   } catch (error) {
     if (/No such module/.test(error.message)) {
-      return process.binding("atom_common_" + name);
+      return process2.binding("atom_common_" + name);
     }
 
     // Note: when atomBinding fails here, it'll always report an error loading
     // atom_common_${name}, but that doesn't mean that we should stub/implement
     // a module with that name.  The equivalent in Electron might be specific
-    // to "browser" or "renderer" processes.
+    // to "browser" or "renderer" process2es.
     //
     // To determine which Electron module to stub/implement, search Electron
     // for atom_browser_${name}, atom_renderer_${name}, or atom_common_${name}.
@@ -90,42 +96,42 @@ process.atomBinding = function(name) {
 //
 // All such modules are in the modules/gecko/ subdirectory, and some of them
 // have the same names as modules provided by Node itself (f.e. the 'buffer'
-// module, which calls process.binding to import the 'buffer' native binding),
+// module, which calls process2.binding to import the 'buffer' native binding),
 // so we specify the absolute URL to the module to avoid name resolution,
 // which might find a different module.
 //
-process.positronBinding = process.binding = function(name) {
+process2.positronBinding = process2.binding = function(name) {
   return require(`resource:///modules/gecko/${name}.js`);
 }
 
-const positronUtil = process.positronBinding('positron_util');
+const positronUtil = process2.positronBinding('positron_util');
 
-process.execPath = exeFile.path;
+process2.execPath = exeFile.path;
 
-// Per <https://nodejs.org/api/process.html#process_process_platform>,
+// Per <https://nodejs.org/api/process2.html#process2_process2_platform>,
 // valid values for this property are darwin, freebsd, linux, sunos and win32;
 // so we convert winnt to win32.  We also lowercase the value, but otherwise
 // we don't modify it, so it *might* contain a value outside the Node set, per
 // <https://developer.mozilla.org/en-US/docs/Mozilla/Developer_guide/Build_Instructions/OS_TARGET>.
-process.platform = Services.appinfo.OS.toLowerCase().replace(/^winnt$/, 'win32');
+process2.platform = Services.appinfo.OS.toLowerCase().replace(/^winnt$/, 'win32');
 
-process.versions = {
+process2.versions = {
   node: '0',
   chrome: Services.appinfo.platformVersion,
   electron: Services.appinfo.version,
 };
 
-process.release = {
+process2.release = {
   name: 'node',
 };
 
-Object.defineProperty(process, 'pid', {
+Object.defineProperty(process2, 'pid', {
   get() { return Services.appinfo.processID },
 });
 
 // We might be able to implement this by using nsIEnvironment, although that API
 // doesn't provide enumeration, whereas this one presumably does.
-process.env = {};
+process2.env = {};
 positronUtil.makeStub('process.env')();
 
-process.type = 'window' in global ? 'renderer' : 'browser';
+process2.type = 'window' in global ? 'renderer' : 'browser';

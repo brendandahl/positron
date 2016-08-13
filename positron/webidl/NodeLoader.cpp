@@ -51,9 +51,15 @@ NodeLoader::~NodeLoader()
   /* destructor code */
 }
 
+static void Returns42(const v8::FunctionCallbackInfo<v8::Value>& info) {
+  printf("####################\n");
+  info.GetReturnValue().Set(42);
+}
+
 /* void init (); */
-NS_IMETHODIMP NodeLoader::Init(JSContext* aContext)
+NS_IMETHODIMP NodeLoader::Init(const nsACString& type, JSContext* aContext)
 {
+  printf(">>> NodeLoader::Init [type=%s]\n", ToNewCString(type));
   v8::V8::Initialize();
   v8::Isolate* isolate = v8::Isolate::New(aContext);
   // v8::Isolate::Scope isolate_scope(isolate);
@@ -92,7 +98,7 @@ NS_IMETHODIMP NodeLoader::Init(JSContext* aContext)
                                     getter_AddRefs(greDir));
   MOZ_ASSERT(greDir);
   greDir->AppendNative(NS_LITERAL_CSTRING("modules"));
-  greDir->AppendNative(NS_LITERAL_CSTRING("browser"));
+  greDir->AppendNative(type);
   greDir->AppendNative(NS_LITERAL_CSTRING("init.js"));
   nsAutoString initalScript;
   greDir->GetPath(initalScript);
@@ -115,6 +121,13 @@ NS_IMETHODIMP NodeLoader::Init(JSContext* aContext)
                              v8::String::NewFromUtf8(isolate, absoluteAppPath));
   env->process_object()->Set(v8::String::NewFromUtf8(isolate, "type"),
                              v8::String::NewFromUtf8(isolate, "browser"));
+
+  v8::Local<v8::FunctionTemplate> acc = v8::FunctionTemplate::New(isolate, Returns42);
+  env->process_object()->Set(context, v8::String::NewFromUtf8(isolate, "doShit"),
+                                     acc->GetFunction(context).ToLocalChecked());
+  // env->process_object()->Set(v8::String::NewFromUtf8(isolate, "doShit", v8::NewStringType::kNormal)
+  //                 .ToLocalChecked(),
+  //             v8::FunctionTemplate::New(isolate, LogCallback));
 
   node::LoadEnvironment(env);
 

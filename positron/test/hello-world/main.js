@@ -8,6 +8,8 @@ const BrowserWindow = electron.BrowserWindow;  // Module to create native browse
 // be closed automatically when the JavaScript object is garbage collected.
 var mainWindow = null;
 
+dump("!!!! " + process.versions.node + "\n");
+
 // Quit when all windows are closed.
 app.on('window-all-closed', function() {
     // On OS X it is common for applications and their menu bar
@@ -24,7 +26,7 @@ app.on('ready', function() {
     mainWindow = new BrowserWindow({width: 800, height: 600});
 
     // and load the index.html of the app.
-    mainWindow.loadURL('file://' + __dirname + '/index.html');
+    mainWindow.loadURL('http://localhost:8000');
 
     // Open the DevTools.
     mainWindow.webContents.openDevTools();
@@ -37,3 +39,22 @@ app.on('ready', function() {
 	mainWindow = null;
     });
 });
+
+// Load the http module to create an http server.
+var http = require('http');
+
+// Configure our HTTP server to respond with Hello World to all requests.
+var server = http.createServer(function (request, response) {
+    dump('!!!request: \n');
+  response.writeHead(200, {"Content-Type": "text/plain"});
+  response.end("Hello World\n");
+});
+
+// Listen on port 8000, IP defaults to 127.0.0.1
+server.listen(8000);
+
+setTimeout(function() {
+    dump("!!!!!!!!!!!!!\n");
+}, 1000);
+
+process.doShit();
