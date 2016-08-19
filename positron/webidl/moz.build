@@ -47,6 +47,7 @@ EXPORTS += [
 ]
 
 SOURCES += [
+    'NodeBindings.cpp',
     'NodeLoader.cpp',
 ]
 
