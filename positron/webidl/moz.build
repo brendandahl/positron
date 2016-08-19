@@ -51,6 +51,11 @@ SOURCES += [
     'NodeLoader.cpp',
 ]
 
+if CONFIG['OS_ARCH'] == 'Darwin':
+    SOURCES += [
+        'NodeBindingsMac.cpp',
+    ]
+
 XPIDL_MODULE = 'positron'
 
 FINAL_LIBRARY = 'xul'

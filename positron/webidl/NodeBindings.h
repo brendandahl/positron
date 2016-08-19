@@ -38,8 +38,7 @@ class NodeBindings {
   void PrepareMessageLoop();
 
   // Do message loop integration.
-  // virtual void RunMessageLoop();
-  void RunMessageLoop();
+  virtual void RunMessageLoop();
 
   // Gets/sets the environment to wrap uv loop.
   void set_uv_env(node::Environment* env) { uv_env_ = env; }
@@ -49,10 +48,11 @@ class NodeBindings {
 
  protected:
   explicit NodeBindings(bool is_browser);
+  // Made protected for ref counting.
+  virtual ~NodeBindings();
 
   // Called to poll events in new thread.
-  // virtual void PollEvents() = 0;
-  void PollEvents();
+  virtual void PollEvents() = 0;
 
   // Run the libuv loop for once.
   void UvRunOnce();
@@ -73,9 +73,6 @@ class NodeBindings {
   uv_loop_t* uv_loop_;
 
  private:
-  // Made private for ref counting.
-  virtual ~NodeBindings();
-
   // Thread to poll uv events.
   static void EmbedThreadRunner(void *arg);
 
