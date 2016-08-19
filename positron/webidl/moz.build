@@ -53,3 +53,5 @@ SOURCES += [
 XPIDL_MODULE = 'positron'
 
 FINAL_LIBRARY = 'xul'
+
+include('/ipc/chromium/chromium-config.mozbuild')
